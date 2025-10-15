@@ -932,6 +932,110 @@ namespace Microsoft.MIDebugEngine.Natvis
                         children.AddRange(eChildren);
                     }
                 }
+                else if (i is CustomListItemsType)
+                {
+                    CustomListItemsType item = (CustomListItemsType)i;
+                    if (!EvalCondition(item.Condition, variable, visualizer.ScopedNames))
+                    {
+                        continue;
+                    }
+
+                    // Initialize variables
+                    Dictionary<string, IVariableInformation> variables = new Dictionary<string, IVariableInformation>();
+                    if (item.Items != null)
+                    {
+                        foreach (var element in item.Items)
+                        {
+                            if (element is VariableType varType)
+                            {
+                                string initialValue = ReplaceNamesInExpression(varType.InitialValue, variable, visualizer.ScopedNames);
+                                IVariableInformation varInfo = new VariableInformation(initialValue, variable, _process.Engine, varType.Name);
+                                varInfo.SyncEval();
+                                variables[varType.Name] = varInfo;
+                            }
+                        }
+                    }
+
+                    // Get size if specified
+                    uint? totalSize = null;
+                    if (item.Size != null)
+                    {
+                        string sizeExpr = ReplaceNamesInExpression(item.Size.Value, variable, visualizer.ScopedNames);
+                        sizeExpr = ReplaceCustomListVariables(sizeExpr, variables);
+                        string sizeValue = GetExpressionValue(sizeExpr, variable, visualizer.ScopedNames);
+                        totalSize = MICore.Debugger.ParseUint(sizeValue, throwOnError: false);
+                    }
+
+                    uint startIndex = 0;
+                    if (variable is PaginatedVisualizerWrapper pvwVariable)
+                    {
+                        startIndex = pvwVariable.StartIndex;
+                    }
+
+                    uint maxItems = item.MaxItemsPerView > 0 ? item.MaxItemsPerView : MAX_EXPAND;
+                    uint itemCount = 0;
+                    uint currentIndex = 0;
+                    bool shouldBreak = false;
+
+                    // Execute custom list iteration
+                    while (!shouldBreak && itemCount < maxItems && (!totalSize.HasValue || currentIndex < totalSize.Value))
+                    {
+                        if (item.Items1 != null)
+                        {
+                            foreach (var element in item.Items1)
+                            {
+                                if (shouldBreak)
+                                    break;
+
+                                if (element is LoopType loop)
+                                {
+                                    shouldBreak = ExecuteCustomListLoop(loop, variable, visualizer.ScopedNames, variables, children, 
+                                        ref itemCount, ref currentIndex, startIndex, maxItems, totalSize);
+                                }
+                                else if (element is ExecType exec)
+                                {
+                                    if (EvalCondition(exec.Condition, variable, visualizer.ScopedNames))
+                                    {
+                                        ExecuteCustomListExec(exec.Value, variable, visualizer.ScopedNames, variables);
+                                    }
+                                }
+                                else if (element is CustomListItemType customItem)
+                                {
+                                    if (currentIndex >= startIndex && itemCount < maxItems)
+                                    {
+                                        if (EvalCondition(customItem.Condition, variable, visualizer.ScopedNames))
+                                        {
+                                            AddCustomListItem(customItem, variable, visualizer.ScopedNames, variables, children, currentIndex, itemCount);
+                                            itemCount++;
+                                        }
+                                    }
+                                    currentIndex++;
+                                }
+                                else if (element is BreakType breakType)
+                                {
+                                    if (EvalCondition(breakType.Condition, variable, visualizer.ScopedNames))
+                                    {
+                                        shouldBreak = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Add "More" node if needed
+                    if (totalSize.HasValue && startIndex + itemCount < totalSize.Value)
+                    {
+                        IVariableInformation moreVariable = new PaginatedVisualizerWrapper(
+                            ResourceStrings.MoreView, 
+                            _process.Engine, 
+                            variable, 
+                            visualizer, 
+                            isVisualizerView: true, 
+                            startIndex + itemCount);
+                        children.Add(moreVariable);
+                    }
+                }
             }
             if (!(variable is VisualizerWrapper)) // don't stack wrappers
             {
@@ -940,6 +1044,126 @@ namespace Microsoft.MIDebugEngine.Natvis
                 children.Add(rawView);
             }
             return children.ToArray();
+        }
+
+        private bool ExecuteCustomListLoop(LoopType loop, IVariableInformation variable, IDictionary<string, string> scopedNames, 
+            Dictionary<string, IVariableInformation> variables, List<IVariableInformation> children, 
+            ref uint itemCount, ref uint currentIndex, uint startIndex, uint maxItems, uint? totalSize)
+        {
+            if (!EvalCondition(loop.Condition, variable, scopedNames))
+                return false;
+
+            bool shouldBreak = false;
+            while (!shouldBreak && itemCount < maxItems && (!totalSize.HasValue || currentIndex < totalSize.Value))
+            {
+                if (loop.Items != null)
+                {
+                    foreach (var element in loop.Items)
+                    {
+                        if (shouldBreak)
+                            break;
+
+                        if (element is ExecType exec)
+                        {
+                            if (EvalCondition(exec.Condition, variable, scopedNames))
+                            {
+                                ExecuteCustomListExec(exec.Value, variable, scopedNames, variables);
+                            }
+                        }
+                        else if (element is CustomListItemType customItem)
+                        {
+                            if (currentIndex >= startIndex && itemCount < maxItems)
+                            {
+                                if (EvalCondition(customItem.Condition, variable, scopedNames))
+                                {
+                                    AddCustomListItem(customItem, variable, scopedNames, variables, children, currentIndex, itemCount);
+                                    itemCount++;
+                                }
+                            }
+                            currentIndex++;
+                        }
+                        else if (element is BreakType breakType)
+                        {
+                            if (EvalCondition(breakType.Condition, variable, scopedNames))
+                            {
+                                shouldBreak = true;
+                                break;
+                            }
+                        }
+                        else if (element is LoopType nestedLoop)
+                        {
+                            shouldBreak = ExecuteCustomListLoop(nestedLoop, variable, scopedNames, variables, children, 
+                                ref itemCount, ref currentIndex, startIndex, maxItems, totalSize);
+                        }
+                    }
+                }
+            }
+            return shouldBreak;
+        }
+
+        private void ExecuteCustomListExec(string expression, IVariableInformation variable, 
+            IDictionary<string, string> scopedNames, Dictionary<string, IVariableInformation> variables)
+        {
+            if (string.IsNullOrWhiteSpace(expression))
+                return;
+
+            string processedExpr = ReplaceNamesInExpression(expression, variable, scopedNames);
+            processedExpr = ReplaceCustomListVariables(processedExpr, variables);
+
+            // Check if this is an assignment to a variable
+            var assignMatch = Regex.Match(processedExpr, @"^([a-zA-Z$_][a-zA-Z$_0-9]*)\s*=\s*(.+)$");
+            if (assignMatch.Success && variables.ContainsKey(assignMatch.Groups[1].Value))
+            {
+                string varName = assignMatch.Groups[1].Value;
+                string assignExpr = assignMatch.Groups[2].Value;
+                
+                IVariableInformation newValue = new VariableInformation(assignExpr, variable, _process.Engine, varName);
+                newValue.SyncEval();
+                variables[varName] = newValue;
+            }
+            else
+            {
+                // Just evaluate the expression
+                IVariableInformation expr = new VariableInformation(processedExpr, variable, _process.Engine, null);
+                expr.SyncEval();
+            }
+        }
+
+        private void AddCustomListItem(CustomListItemType customItem, IVariableInformation variable, 
+            IDictionary<string, string> scopedNames, Dictionary<string, IVariableInformation> variables, 
+            List<IVariableInformation> children, uint currentIndex, uint itemCount)
+        {
+            string itemExpr = ReplaceNamesInExpression(customItem.Value, variable, scopedNames);
+            itemExpr = ReplaceCustomListVariables(itemExpr, variables);
+
+            string displayName;
+            if (!string.IsNullOrEmpty(customItem.Name))
+            {
+                displayName = FormatValue(customItem.Name, variable, scopedNames);
+            }
+            else
+            {
+                displayName = "[" + itemCount.ToString(CultureInfo.InvariantCulture) + "]";
+            }
+
+            IVariableInformation itemVariable = new VariableInformation(itemExpr, variable, _process.Engine, displayName);
+            itemVariable.SyncEval();
+            children.Add(itemVariable);
+        }
+
+        private string ReplaceCustomListVariables(string expression, Dictionary<string, IVariableInformation> variables)
+        {
+            return ProcessNamesInString(expression, new Substitute[] {
+                (m) =>
+                {
+                    IVariableInformation varInfo;
+                    if (variables.TryGetValue(m.Value, out varInfo))
+                    {
+                        return "(" + varInfo.FullName() + ")";
+                    }
+                    return null;
+                }
+            });
         }
 
         private Traverse GetTraverse(string direction, IVariableInformation node)

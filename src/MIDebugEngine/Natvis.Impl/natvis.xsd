@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <xs:schema targetNamespace="http://schemas.microsoft.com/vstudio/debugger/natvis/2010" xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010" attributeFormDefault="unqualified" elementFormDefault="qualified"
            xmlns:xs="http://www.w3.org/2001/XMLSchema">
 
@@ -280,9 +280,15 @@
       <xs:choice minOccurs="0" maxOccurs="unbounded">
         <xs:element name="Variable" minOccurs="0" maxOccurs="unbounded" type="VariableType"></xs:element>
       </xs:choice>
-      <xs:choice minOccurs="0" maxOccurs="unbounded">
+      <xs:choice minOccurs="0" maxOccurs="1">
         <xs:element name="Size" minOccurs="1" maxOccurs="1" type="CustomListSizeType">
         </xs:element>
+      </xs:choice>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="Exec" type="ExecType" minOccurs="0" maxOccurs="unbounded" />
+        <xs:element name="Loop" type="LoopType" minOccurs="0" maxOccurs="unbounded" />
+        <xs:element name="Item" type="CustomListItemType" minOccurs="0" maxOccurs="unbounded" />
+        <xs:element name="Break" type="BreakType" minOccurs="0" maxOccurs="unbounded" />
       </xs:choice>
       <xs:choice minOccurs="0" maxOccurs="1">
         <xs:element name="Skip" minOccurs="1" maxOccurs="1" type="SkipType"></xs:element>
@@ -406,6 +412,19 @@
     <xs:annotation>
       <xs:documentation>Breaks out of the innermost &lt;Loop&gt; element.  A &lt;Break&gt; element outside of a loop will terminate iteration of the collection.</xs:documentation>
     </xs:annotation>
+    <xs:attributeGroup ref="CustomListCode_Attributes" />
+  </xs:complexType>
+
+  <xs:complexType name="LoopType">
+    <xs:annotation>
+      <xs:documentation>Specifies a loop construct for iterating within custom list traversal logic. The loop body can contain Exec, Item, Break, and nested Loop elements.</xs:documentation>
+    </xs:annotation>
+    <xs:choice minOccurs="0" maxOccurs="unbounded">
+      <xs:element name="Exec" type="ExecType" minOccurs="0" maxOccurs="unbounded" />
+      <xs:element name="Item" type="CustomListItemType" minOccurs="0" maxOccurs="unbounded" />
+      <xs:element name="Break" type="BreakType" minOccurs="0" maxOccurs="unbounded" />
+      <xs:element name="Loop" type="LoopType" minOccurs="0" maxOccurs="unbounded" />
+    </xs:choice>
     <xs:attributeGroup ref="CustomListCode_Attributes" />
   </xs:complexType>
 

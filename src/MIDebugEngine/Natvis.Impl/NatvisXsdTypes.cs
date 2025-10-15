@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft. All rights reserved.
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 //------------------------------------------------------------------------------
@@ -503,6 +503,8 @@ namespace Microsoft.MIDebugEngine.Natvis {
         private VariableType[] itemsField;
         
         private CustomListSizeType[] items1Field;
+
+        private object[] items2Field;
         
         private SkipType itemField;
         
@@ -535,6 +537,20 @@ namespace Microsoft.MIDebugEngine.Natvis {
             }
             set {
                 this.items1Field = value;
+            }
+        }
+
+        /// <remarks/>
+        [System.Xml.Serialization.XmlElementAttribute("Break", typeof(BreakType))]
+        [System.Xml.Serialization.XmlElementAttribute("Exec", typeof(ExecType))]
+        [System.Xml.Serialization.XmlElementAttribute("Item", typeof(CustomListItemType))]
+        [System.Xml.Serialization.XmlElementAttribute("Loop", typeof(LoopType))]
+        public object[] Items2 {
+            get {
+                return this.items2Field;
+            }
+            set {
+                this.items2Field = value;
             }
         }
         
@@ -601,6 +617,149 @@ namespace Microsoft.MIDebugEngine.Natvis {
             }
             set {
                 this.maxItemsPerViewFieldSpecified = value;
+            }
+        }
+    }
+
+    /// <remarks/>
+    [System.CodeDom.Compiler.GeneratedCodeAttribute("xsd", "4.8.3928.0")]
+    [System.SerializableAttribute()]
+    [System.Diagnostics.DebuggerStepThroughAttribute()]
+    [System.ComponentModel.DesignerCategoryAttribute("code")]
+    [System.Xml.Serialization.XmlTypeAttribute(Namespace="http://schemas.microsoft.com/vstudio/debugger/natvis/2010")]
+    public partial class CustomListItemType {
+        
+        private string conditionField;
+        
+        private string nameField;
+        
+        private string valueField;
+        
+        /// <remarks/>
+        [System.Xml.Serialization.XmlAttributeAttribute()]
+        public string Condition {
+            get {
+                return this.conditionField;
+            }
+            set {
+                this.conditionField = value;
+            }
+        }
+        
+        /// <remarks/>
+        [System.Xml.Serialization.XmlAttributeAttribute()]
+        public string Name {
+            get {
+                return this.nameField;
+            }
+            set {
+                this.nameField = value;
+            }
+        }
+        
+        /// <remarks/>
+        [System.Xml.Serialization.XmlTextAttribute()]
+        public string Value {
+            get {
+                return this.valueField;
+            }
+            set {
+                this.valueField = value;
+            }
+        }
+    }
+    
+    /// <remarks/>
+    [System.CodeDom.Compiler.GeneratedCodeAttribute("xsd", "4.8.3928.0")]
+    [System.SerializableAttribute()]
+    [System.Diagnostics.DebuggerStepThroughAttribute()]
+    [System.ComponentModel.DesignerCategoryAttribute("code")]
+    [System.Xml.Serialization.XmlTypeAttribute(Namespace="http://schemas.microsoft.com/vstudio/debugger/natvis/2010")]
+    public partial class ExecType {
+        
+        private string conditionField;
+        
+        private string valueField;
+        
+        /// <remarks/>
+        [System.Xml.Serialization.XmlAttributeAttribute()]
+        public string Condition {
+            get {
+                return this.conditionField;
+            }
+            set {
+                this.conditionField = value;
+            }
+        }
+        
+        /// <remarks/>
+        [System.Xml.Serialization.XmlTextAttribute()]
+        public string Value {
+            get {
+                return this.valueField;
+            }
+            set {
+                this.valueField = value;
+            }
+        }
+    }
+    
+    /// <remarks/>
+    [System.CodeDom.Compiler.GeneratedCodeAttribute("xsd", "4.8.3928.0")]
+    [System.SerializableAttribute()]
+    [System.Diagnostics.DebuggerStepThroughAttribute()]
+    [System.ComponentModel.DesignerCategoryAttribute("code")]
+    [System.Xml.Serialization.XmlTypeAttribute(Namespace="http://schemas.microsoft.com/vstudio/debugger/natvis/2010")]
+    public partial class BreakType {
+        
+        private string conditionField;
+        
+        /// <remarks/>
+        [System.Xml.Serialization.XmlAttributeAttribute()]
+        public string Condition {
+            get {
+                return this.conditionField;
+            }
+            set {
+                this.conditionField = value;
+            }
+        }
+    }
+    
+    /// <remarks/>
+    [System.CodeDom.Compiler.GeneratedCodeAttribute("xsd", "4.8.3928.0")]
+    [System.SerializableAttribute()]
+    [System.Diagnostics.DebuggerStepThroughAttribute()]
+    [System.ComponentModel.DesignerCategoryAttribute("code")]
+    [System.Xml.Serialization.XmlTypeAttribute(Namespace="http://schemas.microsoft.com/vstudio/debugger/natvis/2010")]
+    public partial class LoopType {
+        
+        private object[] itemsField;
+        
+        private string conditionField;
+        
+        /// <remarks/>
+        [System.Xml.Serialization.XmlElementAttribute("Break", typeof(BreakType))]
+        [System.Xml.Serialization.XmlElementAttribute("Exec", typeof(ExecType))]
+        [System.Xml.Serialization.XmlElementAttribute("Item", typeof(CustomListItemType))]
+        [System.Xml.Serialization.XmlElementAttribute("Loop", typeof(LoopType))]
+        public object[] Items {
+            get {
+                return this.itemsField;
+            }
+            set {
+                this.itemsField = value;
+            }
+        }
+        
+        /// <remarks/>
+        [System.Xml.Serialization.XmlAttributeAttribute()]
+        public string Condition {
+            get {
+                return this.conditionField;
+            }
+            set {
+                this.conditionField = value;
             }
         }
     }
